@@ -18,6 +18,10 @@ from level_engine import add_xp
 bot = Bot(BOT_TOKEN)
 dp = Dispatcher()
 
+@dp.message_handler(commands=['start'])
+async def start_test(message: types.Message):
+    await message.reply("Бот живой!")
+
 @dp.message()
 async def handle_message(message: Message):
     if message.chat.type not in ["group", "supergroup"]:
