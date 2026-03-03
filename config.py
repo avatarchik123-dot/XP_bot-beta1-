@@ -1,4 +1,5 @@
-BOT_TOKEN = ""
+import os
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 ANTI_SPAM_SECONDS = 3
 TOP_CACHE_SECONDS = 30
