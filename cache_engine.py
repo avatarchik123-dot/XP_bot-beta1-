@@ -1,14 +1,13 @@
 import time
-from config import TOP_CACHE_SECONDS
+from config import CACHE_TOP_SECONDS
 
 top_cache = {}
 
-def get_cached_top(group_id):
-    if group_id in top_cache:
-        data, timestamp = top_cache[group_id]
-        if time.time() - timestamp < TOP_CACHE_SECONDS:
-            return data
+def get_top_cache(group_id):
+    data = top_cache.get(group_id)
+    if data and time.time() - data["timestamp"] < CACHE_TOP_SECONDS:
+        return data["value"]
     return None
 
-def set_cached_top(group_id, data):
-    top_cache[group_id] = (data, time.time())
+def update_top_cache(group_id, value):
+    top_cache[group_id] = {"value": value, "timestamp": time.time()}
