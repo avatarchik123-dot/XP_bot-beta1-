@@ -1,3 +1,11 @@
+import os
+
+# Список нужных папок
+folders = ["data", "data/profiles", "data/logs", "data/images", "data/backup"]
+
+for folder in folders:
+    if not os.path.exists(folder):
+        os.makedirs(folder)
 import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message
