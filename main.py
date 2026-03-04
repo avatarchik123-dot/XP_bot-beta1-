@@ -4,6 +4,7 @@ from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
 
+from config import TOKEN
 from engines.xp_engine import register_xp_handlers
 from engines.reaction_handler import register_reaction_handlers
 from engines.admin_engine import register_admin_handlers
