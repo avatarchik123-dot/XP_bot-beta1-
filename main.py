@@ -1,34 +1,44 @@
+import os
 import asyncio
 from aiogram import Bot, Dispatcher
-from aiogram.enums import ParseMode
-from aiogram.client.default import DefaultBotProperties
-from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.filters import Command
+from aiogram.types import Message
 
-from config import TOKEN
-from engines.xp_engine import register_xp_handlers
-from engines.reaction_handler import register_reaction_handlers
-from engines.admin_engine import register_admin_handlers
-from setup.wizard import register_wizard_handlers
-from services.file_manager import init_files
+# Чтение токена из переменной окружения
+TOKEN = os.getenv("BOT_TOKEN")
+if not TOKEN:
+    raise RuntimeError("Ошибка: переменная BOT_TOKEN не задана!")
 
-TOKEN = "BOT_TOKEN"
+# Убираем переносы и лишние пробелы
+TOKEN = TOKEN.strip().replace("\n", "")
+
+# Создаём объекты бота и диспетчера
+bot = Bot(token=TOKEN, parse_mode="HTML")
+dp = Dispatcher()
+
+# Простейший хендлер /start
+@dp.message(Command(commands=["start"]))
+async def start_handler(message: Message):
+    await message.answer("Бот живой! Перейдите в личку для настройки.")
 
 async def main():
-    init_files()
+    print("Старт бота...")
+    try:
+        # Проверим токен заранее
+        me = await bot.get_me()
+        print(f"Бот {me.username} активен")
+    except Exception as e:
+        print("Не удалось подключиться:", e)
+        return
 
-    bot = Bot(
-        token=TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )
+    from aiogram import F
+    from aiogram import types
 
-    dp = Dispatcher(storage=MemoryStorage())
-
-    register_xp_handlers(dp)
-    register_reaction_handlers(dp)
-    register_admin_handlers(dp)
-    register_wizard_handlers(dp)
-
-    await dp.start_polling(bot)
+    # Запуск поллинга
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await bot.session.close()
 
 if __name__ == "__main__":
     asyncio.run(main())
