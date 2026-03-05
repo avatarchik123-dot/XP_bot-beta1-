@@ -42,6 +42,6 @@ if not user:
 user["xp"] += 5
 
 save_json("data/groups.json", groups)
-        await message.answer(
+await message.answer(
             f"{message.from_user.first_name} достиг уровня {new_level}"
         )
