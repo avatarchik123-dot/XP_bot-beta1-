@@ -1,6 +1,6 @@
 import asyncio
 from aiogram import Bot, Dispatcher
-from config import TOKEN
+from config import BOT_TOKEN
 
 from engines.admin_engine import router as admin_router
 from engines.level_engine import router as level_router
@@ -8,7 +8,7 @@ from engines.reaction_engine import router as reaction_router
 from engines.xp_engine import router as xp_router
 
 async def main():
-    bot = Bot(token=TOKEN)
+    bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
 
     dp.include_router(admin_router)
