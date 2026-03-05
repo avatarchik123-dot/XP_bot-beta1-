@@ -1,3 +1,7 @@
+from aiogram import Router
+
+router = Router()
+
 def get_level(xp, levels):
     current_level = 0
     for lvl, data in levels.items():
