@@ -1,6 +1,3 @@
 import os
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-
-if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN not found in environment variables")
+BOT_TOKEN = os.getenv("BOT_TOKEN") or "8240160705:AAFcjQULLAk4LeYXbzU66VO4yx67n_qZKgM"
