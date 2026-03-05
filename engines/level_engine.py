@@ -1,75 +1,17 @@
-from aiogram import Router
-from aiogram.types import Message
-from services.file_manager import load_json
+from services.file_manager import load_json, save_json
 
-router = Router()
+# Добавляем XP пользователю
+def add_xp(chat_id: int, user_id: int, xp: int):
+    levels = load_json("levels")
+    if str(chat_id) not in levels:
+        levels[str(chat_id)] = {}
+    user_data = levels[str(chat_id)].get(str(user_id), {"xp": 0, "level": 0})
+    user_data["xp"] += xp
+    levels[str(chat_id)][str(user_id)] = user_data
+    save_json("levels", levels)
+    return user_data
 
-
-def get_level(xp):
-    return xp // 100
-
-
-@router.message(commands=["rank"])
-async def rank(message: Message):
-
-    group_id = str(message.chat.id)
-    user_id = str(message.from_user.id)
-
-    data = load_json("data/levels.json")
-
-    if group_id not in data:
-        await message.reply("Нет данных.")
-        return
-
-    if user_id not in data[group_id]:
-        await message.reply("У вас пока нет XP.")
-        return
-
-    xp = data[group_id][user_id]["xp"]
-    level = get_level(xp)
-
-    next_level = (level + 1) * 100
-    remain = next_level - xp
-
-    bar = int((xp % 100) / 10)
-
-    progress = "█" * bar + "░" * (10 - bar)
-
-    text = (
-        f"Уровень: {level}\n"
-        f"XP: {xp}\n"
-        f"До следующего: {remain}\n"
-        f"[{progress}]"
-    )
-
-    await message.reply(text)
-
-
-@router.message(commands=["top"])
-async def top(message: Message):
-
-    group_id = str(message.chat.id)
-
-    data = load_json("data/levels.json")
-
-    if group_id not in data:
-        await message.reply("Нет данных.")
-        return
-
-    users = data[group_id]
-
-    sorted_users = sorted(
-        users.items(),
-        key=lambda x: x[1]["xp"],
-        reverse=True
-    )[:5]
-
-    text = "🏆 Топ 5\n\n"
-
-    for i, (user_id, info) in enumerate(sorted_users, start=1):
-        xp = info["xp"]
-        level = xp // 100
-
-        text += f"{i}. {user_id} | lvl {level} | {xp} XP\n"
-
-    await message.reply(text)
+# Получаем информацию о уровне
+def get_level_info(chat_id: int, user_id: int):
+    levels = load_json("levels")
+    return levels.get(str(chat_id), {}).get(str(user_id), {"xp": 0, "level": 0})
