@@ -22,7 +22,7 @@ async def level_system(message: Message):
     if message.chat.type == "private":
         return
 
-    groups = load_json("groups.json")
+groups = load_json("groups.json")
 
 chat_id = str(message.chat.id)
 user_id = str(message.from_user.id)
@@ -33,7 +33,7 @@ if chat_id not in groups:
 if "users" not in groups[chat_id]:
     groups[chat_id]["users"] = {}
 
-user = groups[chat_id]["users"].get(user_id))
+user = groups[chat_id]["users"].get(user_id)
 
     if not user:
         return
