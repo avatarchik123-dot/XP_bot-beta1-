@@ -24,13 +24,16 @@ async def level_system(message: Message):
 
     groups = load_json("groups.json")
 
-    chat_id = str(message.chat.id)
-    user_id = str(message.from_user.id)
+chat_id = str(message.chat.id)
+user_id = str(message.from_user.id)
 
-    if chat_id not in groups:
-        return
+if chat_id not in groups:
+    return
 
-    user = groups[chat_id]["users"].get(user_id)
+if "users" not in groups[chat_id]:
+    groups[chat_id]["users"] = {}
+
+user = groups[chat_id]["users"].get(user_id))
 
     if not user:
         return
