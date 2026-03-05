@@ -1,44 +1,43 @@
-import os
 import asyncio
+import os
+
 from aiogram import Bot, Dispatcher
-from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.enums import ParseMode
+from aiogram.client.default import DefaultBotProperties
 
-# Чтение токена из переменной окружения
-TOKEN = os.getenv("BOT_TOKEN")
-if not TOKEN:
-    raise RuntimeError("Ошибка: переменная BOT_TOKEN не задана!")
+from config import BOT_TOKEN
 
-# Убираем переносы и лишние пробелы
-TOKEN = TOKEN.strip().replace("\n", "")
+# engines
+from engines import xp_engine
+from engines import level_engine
+from engines import reaction_engine
+from engines import admin_engine
 
-# Создаём объекты бота и диспетчера
-bot = Bot(token=TOKEN, parse_mode="HTML")
-dp = Dispatcher()
-
-# Простейший хендлер /start
-@dp.message(Command(commands=["start"]))
-async def start_handler(message: Message):
-    await message.answer("Бот живой! Перейдите в личку для настройки.")
 
 async def main():
-    print("Старт бота...")
-    try:
-        # Проверим токен заранее
-        me = await bot.get_me()
-        print(f"Бот {me.username} активен")
-    except Exception as e:
-        print("Не удалось подключиться:", e)
-        return
 
-    from aiogram import F
-    from aiogram import types
+    token = os.getenv("BOT_TOKEN") or BOT_TOKEN
 
-    # Запуск поллинга
-    try:
-        await dp.start_polling(bot)
-    finally:
-        await bot.session.close()
+    if not token:
+        raise ValueError("BOT_TOKEN not found")
+
+    bot = Bot(
+        token=token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+    )
+
+    dp = Dispatcher()
+
+    # подключаем engines
+    dp.include_router(xp_engine.router)
+    dp.include_router(level_engine.router)
+    dp.include_router(reaction_engine.router)
+    dp.include_router(admin_engine.router)
+
+    print("Bot started")
+
+    await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
