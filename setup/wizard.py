@@ -1,12 +1,12 @@
-from aiogram import types
-from aiogram.filters import Command
+from aiogram import Router
+from aiogram.types import Message
 
-def register_wizard_handlers(dp):
+router = Router()
 
-    @dp.message(Command("start"))
-    async def start(message: types.Message):
-        await message.answer(
-            "➕ Добавить в группу\n"
-            "⚙️ Настроить бота\n"
-            "📂 Мои группы"
-        )
+
+@router.message(lambda m: m.text == "/setup")
+async def setup_start(message: Message):
+
+    await message.answer(
+        "Настройка бота будет доступна позже"
+    )
