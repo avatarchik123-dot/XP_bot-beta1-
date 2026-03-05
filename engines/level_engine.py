@@ -1,17 +1,47 @@
+from aiogram import Router
+from aiogram.types import Message
+
 from services.file_manager import load_json, save_json
 
-# Добавляем XP пользователю
-def add_xp(chat_id: int, user_id: int, xp: int):
-    levels = load_json("levels")
-    if str(chat_id) not in levels:
-        levels[str(chat_id)] = {}
-    user_data = levels[str(chat_id)].get(str(user_id), {"xp": 0, "level": 0})
-    user_data["xp"] += xp
-    levels[str(chat_id)][str(user_id)] = user_data
-    save_json("levels", levels)
-    return user_data
+router = Router()
 
-# Получаем информацию о уровне
-def get_level_info(chat_id: int, user_id: int):
-    levels = load_json("levels")
-    return levels.get(str(chat_id), {}).get(str(user_id), {"xp": 0, "level": 0})
+
+def check_level(xp):
+
+    level = 1
+
+    while xp >= level * 100:
+        level += 1
+
+    return level
+
+
+@router.message()
+async def level_system(message: Message):
+
+    if message.chat.type == "private":
+        return
+
+    groups = load_json("groups.json")
+
+    chat_id = str(message.chat.id)
+    user_id = str(message.from_user.id)
+
+    if chat_id not in groups:
+        return
+
+    user = groups[chat_id]["users"].get(user_id)
+
+    if not user:
+        return
+
+    new_level = check_level(user["xp"])
+
+    if new_level > user["level"]:
+        user["level"] = new_level
+
+        save_json("groups.json", groups)
+
+        await message.answer(
+            f"{message.from_user.first_name} достиг уровня {new_level}"
+        )
