@@ -16,11 +16,6 @@ from engines import admin_engine
 
 async def main():
 
-    token = os.getenv("BOT_TOKEN") or BOT_TOKEN
-
-    if not token:
-        raise ValueError("BOT_TOKEN not found")
-
     bot = Bot(
         token=token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
