@@ -1,3 +1,7 @@
+from aiogram import Router
+
+router = Router()
+
 from aiogram import types
 from aiogram.filters import Command
 from services.file_manager import load, save
