@@ -25,7 +25,7 @@ return
 groups = load_json("data/groups.json")
 
 if str(chat_id) not in groups:
-    return
+return
 
 if "users" not in groups[str(chat_id)]:
     groups[str(chat_id)]["users"] = {}
