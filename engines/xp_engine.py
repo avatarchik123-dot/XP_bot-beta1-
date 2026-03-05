@@ -1,3 +1,7 @@
+from aiogram import Router
+
+router = Router()
+
 import time
 from aiogram import types
 from services.file_manager import load, save
