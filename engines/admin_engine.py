@@ -1,5 +1,6 @@
 from aiogram import Router
 from aiogram.types import Message
+from aiogram.filters import Command
 
 from services.file_manager import load_json, save_json
 
