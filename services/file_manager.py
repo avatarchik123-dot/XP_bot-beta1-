@@ -2,7 +2,7 @@ import json
 import os
 import shutil
 
-DATA_FILES = [
+DATA = [
     "groups.json",
     "levels.json",
     "levels_backup.json",
