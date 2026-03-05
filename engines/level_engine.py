@@ -20,7 +20,7 @@ def check_level(xp):
 async def level_system(message: Message):
 
     if message.chat.type == "private":
-        return
+return
 
 groups = load_json("data/groups.json")
 
