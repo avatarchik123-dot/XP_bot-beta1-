@@ -1,46 +1,116 @@
 from aiogram import Router
+from aiogram.types import Message
+from services.file_manager import load_json, save_json
 
 router = Router()
 
-from aiogram import types
-from aiogram.filters import Command
-from services.file_manager import load, save
-from services.cache_manager import get, set, invalidate
 
-def register_admin_handlers(dp):
+def is_admin(member):
+    return member.status in ["administrator", "creator"]
 
-    @dp.message(Command("initgroup"))
-    async def init_group(message: types.Message):
-        group_id = str(message.chat.id)
 
-        groups = load("groups.json")
+@router.message(commands=["initgroup"])
+async def init_group(message: Message):
 
-        if group_id not in groups:
-            groups[group_id] = {
-                "users": {},
-                "logs": []
-            }
+    chat = message.chat
+    user = message.from_user
 
-        save("groups.json", groups)
-        await message.answer("Группа инициализирована.")
+    member = await message.bot.get_chat_member(chat.id, user.id)
 
-    @dp.message(Command("top"))
-    async def top(message: types.Message):
-        group_id = str(message.chat.id)
+    if not is_admin(member):
+        await message.reply("Только администратор может выполнить эту команду.")
+        return
 
-        cached = get(f"top_{group_id}")
-        if cached:
-            await message.answer(cached)
-            return
+    groups = load_json("data/groups.json")
 
-        groups = load("groups.json")
-        users = groups[group_id]["users"]
+    groups[str(chat.id)] = {
+        "title": chat.title
+    }
 
-        sorted_users = sorted(users.items(), key=lambda x: x[1]["xp"], reverse=True)[:5]
+    save_json("data/groups.json", groups)
 
-        text = "🏆 Топ 5:\n\n"
-        for i, (uid, data) in enumerate(sorted_users, 1):
-            text += f"{i}. {uid} — {data['xp']} XP\n"
+    await message.reply("Группа инициализирована.")
 
-        set(f"top_{group_id}", text)
-        await message.answer(text)
+
+@router.message(commands=["addxp"])
+async def add_xp(message: Message):
+
+    chat = message.chat
+    user = message.from_user
+
+    member = await message.bot.get_chat_member(chat.id, user.id)
+
+    if not is_admin(member):
+        return
+
+    if not message.reply_to_message:
+        await message.reply("Ответьте на сообщение пользователя.")
+        return
+
+    args = message.text.split()
+
+    if len(args) < 2:
+        return
+
+    amount = int(args[1])
+
+    target = message.reply_to_message.from_user.id
+
+    data = load_json("data/levels.json")
+
+    group_id = str(chat.id)
+    user_id = str(target)
+
+    if group_id not in data:
+        data[group_id] = {}
+
+    if user_id not in data[group_id]:
+        data[group_id][user_id] = {"xp": 0, "level": 0}
+
+    data[group_id][user_id]["xp"] += amount
+
+    save_json("data/levels.json", data)
+
+    await message.reply(f"Добавлено {amount} XP")
+
+
+@router.message(commands=["removexp"])
+async def remove_xp(message: Message):
+
+    chat = message.chat
+    user = message.from_user
+
+    member = await message.bot.get_chat_member(chat.id, user.id)
+
+    if not is_admin(member):
+        return
+
+    if not message.reply_to_message:
+        await message.reply("Ответьте на сообщение пользователя.")
+        return
+
+    args = message.text.split()
+
+    if len(args) < 2:
+        return
+
+    amount = int(args[1])
+
+    target = message.reply_to_message.from_user.id
+
+    data = load_json("data/levels.json")
+
+    group_id = str(chat.id)
+    user_id = str(target)
+
+    if group_id not in data:
+        return
+
+    if user_id not in data[group_id]:
+        return
+
+    data[group_id][user_id]["xp"] -= amount
+
+    save_json("data/levels.json", data)
+
+    await message.reply(f"Убрано {amount} XP")
