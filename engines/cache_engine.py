@@ -1,20 +1,23 @@
-from datetime import datetime, timedelta
+import time
 
 cache = {}
 
-def set_cache(key, value, ttl_seconds=30):
-    expire = datetime.now() + timedelta(seconds=ttl_seconds)
-    cache[key] = {"value": value, "expire": expire}
+
+def set_cache(key, value, ttl=30):
+    cache[key] = {
+        "value": value,
+        "expire": time.time() + ttl
+    }
+
 
 def get_cache(key):
     data = cache.get(key)
+
     if not data:
         return None
-    if datetime.now() > data["expire"]:
+
+    if time.time() > data["expire"]:
         del cache[key]
         return None
-    return data["value"]
 
-def invalidate_cache(key):
-    if key in cache:
-        del cache[key]
+    return data["value"]
