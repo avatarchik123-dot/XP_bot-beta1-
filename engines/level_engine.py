@@ -37,7 +37,7 @@ if not user:
         "xp": 0,
         "level": 1
     }
-    user = groups[str(chat_id)]["users"][str(user_id]]
+    user = groups[str(chat_id)]["users"][str(user_id)]
 
 user["xp"] += 5
 
