@@ -1,25 +1,34 @@
 from aiogram import Router
 from aiogram.types import Message
+
 from services.file_manager import load_json, save_json
 
 router = Router()
 
 
-@router.message(lambda m: m.text == "/initgroup")
+@router.message(lambda message: message.text == "/initgroup")
 async def init_group(message: Message):
 
+    if message.chat.type == "private":
+        await message.answer("Эту команду нужно использовать в группе.")
+        return
+
+    group_id = str(message.chat.id)
+
     groups = load_json("groups.json")
+    levels = load_json("levels.json")
 
-    chat_id = str(message.chat.id)
+    if group_id in groups:
+        await message.answer("Группа уже инициализирована.")
+        return
 
-    if chat_id not in groups:
-        groups[chat_id] = {
-            "users": {}
-        }
+    groups[group_id] = {
+        "title": message.chat.title
+    }
 
-        save_json("groups.json", groups)
+    levels[group_id] = {}
 
-        await message.answer("Группа инициализирована")
+    save_json("groups.json", groups)
+    save_json("levels.json", levels)
 
-    else:
-        await message.answer("Группа уже инициализирована")
+    await message.answer("Группа успешно инициализирована.")
