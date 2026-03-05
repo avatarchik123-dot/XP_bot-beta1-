@@ -6,29 +6,28 @@ from services.file_manager import load_json, save_json
 router = Router()
 
 
-@router.message(lambda message: message.text == "/initgroup")
+@router.message(Command("initgroup"))
 async def init_group(message: Message):
 
     if message.chat.type == "private":
-        await message.answer("Эту команду нужно использовать в группе.")
+        await message.answer("Эта команда работает только в группе.")
         return
-
-    group_id = str(message.chat.id)
 
     groups = load_json("groups.json")
-    levels = load_json("levels.json")
 
-    if group_id in groups:
-        await message.answer("Группа уже инициализирована.")
-        return
+    chat_id = str(message.chat.id)
 
-    groups[group_id] = {
-        "title": message.chat.title
-    }
+    if chat_id not in groups:
+        groups[chat_id] = {
+            "name": message.chat.title,
+            "users": {},
+            "xp_enabled": True,
+            "reactions_enabled": True,
+            "levels": True
+        }
 
-    levels[group_id] = {}
+        save_json("groups.json", groups)
 
-    save_json("groups.json", groups)
-    save_json("levels.json", levels)
-
-    await message.answer("Группа успешно инициализирована.")
+        await message.answer("Группа успешно инициализирована.")
+    else:
+        await message.answer("Группа уже была инициализирована.")
