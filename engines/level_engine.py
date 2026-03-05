@@ -6,42 +6,31 @@ from services.file_manager import load_json, save_json
 router = Router()
 
 
-def check_level(xp):
-
-    level = 1
-
-    while xp >= level * 100:
-        level += 1
-
-    return level
-
-
 @router.message()
 async def level_system(message: Message):
 
-    if message.chat.type == "private":
-    return
+    if not message.chat:
+        return
 
-groups = load_json("data/groups.json")
+    chat_id = str(message.chat.id)
+    user_id = str(message.from_user.id)
 
-if str(chat_id) not in groups:
-return
+    groups = load_json("data/groups.json")
 
-if "users" not in groups[str(chat_id)]:
-    groups[str(chat_id)]["users"] = {}
+    if chat_id not in groups:
+        return
 
-user = groups[str(chat_id)]["users"].get(str(user_id))
+    if "users" not in groups[chat_id]:
+        groups[chat_id]["users"] = {}
 
-if not user:
-    groups[str(chat_id)]["users"][str(user_id)] = {
-        "xp": 0,
-        "level": 1
-    }
-    user = groups[str(chat_id)]["users"][str(user_id)]
+    users = groups[chat_id]["users"]
 
-user["xp"] += 5
+    if user_id not in users:
+        users[user_id] = {
+            "xp": 0,
+            "level": 1
+        }
 
-save_json("data/groups.json", groups)
-await message.answer(
-            f"{message.from_user.first_name} достиг уровня {new_level}"
-        )
+    users[user_id]["xp"] += 5
+
+    save_json("data/groups.json", groups)
