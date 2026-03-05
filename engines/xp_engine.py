@@ -1,17 +1,17 @@
-from aiogram import Router
+from aiogram import Router, F
+from aiogram.types import Message
+import time
+from services.file_manager import load_json, save_json
 
 router = Router()
 
-import time
-from aiogram import types
-from services.file_manager import load, save
-from services.cache_manager import invalidate
+ANTI_FLOOD = 3
 
-user_cooldown = {}
-user_last_messages = {}
+last_message_time = {}
 
-def calculate_text_xp(text):
+def calculate_text_xp(text: str):
     length = len(text)
+
     if length < 3:
         return 0
     if 3 <= length <= 9:
@@ -20,68 +20,54 @@ def calculate_text_xp(text):
         return 2
     if 30 <= length <= 49:
         return 3
-    return 5
+    if length >= 50:
+        return 5
 
-def register_xp_handlers(dp):
+    return 0
 
-    @dp.message()
-    async def handle_message(message: types.Message):
-        if not message.text and not message.photo and not message.video:
+
+@router.message(F.chat.type.in_(["group", "supergroup"]))
+async def handle_message(message: Message):
+
+    if message.from_user.is_bot:
+        return
+
+    user_id = str(message.from_user.id)
+    group_id = str(message.chat.id)
+
+    now = time.time()
+
+    if user_id in last_message_time:
+        if now - last_message_time[user_id] < ANTI_FLOOD:
             return
 
-        if message.from_user.is_bot:
-            return
+    last_message_time[user_id] = now
 
-        if message.text and message.text.startswith("/"):
-            return
+    xp = 0
 
-        user_id = str(message.from_user.id)
-        group_id = str(message.chat.id)
+    if message.text:
+        xp += calculate_text_xp(message.text)
 
-        now = time.time()
+    if message.photo:
+        xp += 3
 
-        if user_id in user_cooldown:
-            if now - user_cooldown[user_id] < 3:
-                return
+    if message.video:
+        xp += 5
 
-        user_cooldown[user_id] = now
+    if xp == 0:
+        return
 
-        if user_id not in user_last_messages:
-            user_last_messages[user_id] = []
+    data = load_json("data/levels.json")
 
-        last_msgs = user_last_messages[user_id]
+    if group_id not in data:
+        data[group_id] = {}
 
-        if message.text:
-            if last_msgs.count(message.text) >= 2:
-                return
-            last_msgs.append(message.text)
-            if len(last_msgs) > 3:
-                last_msgs.pop(0)
+    if user_id not in data[group_id]:
+        data[group_id][user_id] = {
+            "xp": 0,
+            "level": 0
+        }
 
-        xp = 0
+    data[group_id][user_id]["xp"] += xp
 
-        if message.text:
-            xp += calculate_text_xp(message.text)
-
-        if message.photo:
-            xp += 3
-        if message.video:
-            xp += 5
-
-        if xp == 0:
-            return
-
-        groups = load("groups.json")
-        if group_id not in groups:
-            return
-
-        if user_id not in groups[group_id]["users"]:
-            groups[group_id]["users"][user_id] = {
-                "xp": 0,
-                "level": 0
-            }
-
-        groups[group_id]["users"][user_id]["xp"] += xp
-
-        save("groups.json", groups)
-        invalidate(f"top_{group_id}")
+    save_json("data/levels.json", data)
