@@ -85,4 +85,4 @@ async def rank(message: Message):
         f"Сообщений: {messages}"
     )
 
-    await message.reply(text
+    await message.reply(text)
