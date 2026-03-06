@@ -23,4 +23,4 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 
-    print("deploy test 123")
+    print("fuck this shit 123")
