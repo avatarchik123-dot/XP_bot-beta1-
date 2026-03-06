@@ -86,8 +86,3 @@ async def rank(message: Message):
     )
 
     await message.reply(text)
-
-
-
-
-#*÷;#[×*]×;#;=['beo
