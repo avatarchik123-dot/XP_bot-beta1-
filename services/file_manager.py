@@ -1,18 +1,7 @@
-import json
-import os
+import aiosqlite
+from config import DB_NAME
 
 
-def load_json(path):
+async def db():
 
-    if not os.path.exists(path):
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump({}, f)
-
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def save_json(path, data):
-
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+    return await aiosqlite.connect(DB_NAME)
