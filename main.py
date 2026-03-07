@@ -15,10 +15,10 @@ async def main():
 
     dp = Dispatcher()
 
-    app.include_router(admin_router)
-    app.include_router(level_router)
-    app.include_router(xp_router)
-    app.include_router(reaction_router)
+    dp.include_router(admin_router)
+    dp.include_router(level_router)
+    dp.include_router(xp_router)
+    dp.include_router(reaction_router)
 
     print("Bot started")
 
