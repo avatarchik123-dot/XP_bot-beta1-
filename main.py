@@ -1,11 +1,12 @@
 import asyncio
-
 from aiogram import Bot, Dispatcher
+
 from config import BOT_TOKEN
 
 from engines.admin import router as admin_router
 from engines.level import router as level_router
 from engines.reaction import router as reaction_router
+
 
 async def main():
 
@@ -20,6 +21,7 @@ async def main():
     print("Bot started")
 
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
