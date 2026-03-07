@@ -1,24 +1,25 @@
 from aiogram import Router
-from aiogram.types import Message
 from aiogram.filters import Command
+from aiogram.types import Message
 
-from services.file_manager import db
+from services.database import groups, Group
+from config import DEFAULT_XP_STEP, DEFAULT_MAX_LEVEL
 
 router = Router()
-
 
 @router.message(Command("initgroup"))
 async def init_group(message: Message):
 
     chat_id = message.chat.id
 
-    async with await db() as conn:
+    if groups.search(Group.chat_id == chat_id):
+        await message.answer("Группа уже настроена")
+        return
 
-        await conn.execute(
-        "INSERT OR IGNORE INTO groups(chat_id,xp_step,max_level) VALUES(?,?,?)",
-        (chat_id,100,25)
-        )
-
-        await conn.commit()
+    groups.insert({
+        "chat_id": chat_id,
+        "xp_step": DEFAULT_XP_STEP,
+        "max_level": DEFAULT_MAX_LEVEL
+    })
 
     await message.answer("Группа инициализирована")
