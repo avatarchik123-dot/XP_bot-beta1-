@@ -1,11 +1,10 @@
 from aiogram import Router
 from aiogram.types import MessageReactionUpdated
 
-from config import XP_REACTION
-from services.file_manager import db
+from config import XP_REACTION, MAX_REACTIONS
+from services.database import reactions, users, Reaction, User
 
 router = Router()
-
 
 @router.message_reaction()
 async def reaction_handler(event: MessageReactionUpdated):
@@ -14,19 +13,13 @@ async def reaction_handler(event: MessageReactionUpdated):
     message_id = event.message_id
     chat_id = event.chat.id
 
-    async with await db() as conn:
+    key = f"{message_id}_{reactor}"
 
-        cur = await conn.execute(
-        "SELECT reactor_id FROM reactions WHERE message_id=? AND reactor_id=?",
-        (message_id,reactor)
-        )
+    if reactions.get(Reaction.key == key):
+        return
 
-        if await cur.fetchone():
-            return
-
-        await conn.execute(
-        "INSERT INTO reactions(message_id,reactor_id) VALUES(?,?)",
-        (message_id,reactor)
-        )
-
-        await conn.commit()
+    reactions.insert({
+        "key": key,
+        "message_id": message_id,
+        "reactor": reactor
+    })
