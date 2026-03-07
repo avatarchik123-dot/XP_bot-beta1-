@@ -24,7 +24,7 @@ async def rank(message: Message):
     xp = user["xp"]
     level = user["level"]
 
-    await message.answer(f"Твой уровень: {level}\nXP: {xp}")
+    await send_temp(message,f"Твой уровень: {level}\nXP: {xp}")
 
 @router.message(Command("top"))
 async def top_users(message: Message):
@@ -34,7 +34,7 @@ async def top_users(message: Message):
     all_users = users.search(User.chat_id == chat_id)
 
     if not all_users:
-        await message.answer("Пока нет данных")
+        await send_temp(message,"Пока нет данных")
         return
 
     sorted_users = sorted(all_users, key=lambda x: x["xp"], reverse=True)[:5]
@@ -44,7 +44,7 @@ async def top_users(message: Message):
     for i, u in enumerate(sorted_users, 1):
         text += f"{i}. {u['user_id']} — {u['xp']} XP\n"
 
-    await message.answer(text)
+    await send_temp(message,text)
 
 @router.message()
 async def handle_message(message: Message):
