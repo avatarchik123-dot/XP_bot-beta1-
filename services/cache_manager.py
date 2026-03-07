@@ -1,17 +1,15 @@
 import time
 
-user_cooldowns = {}
+cooldowns = {}
 
-
-def check_antiflood(user_id):
+def antiflood(user_id, delay):
 
     now = time.time()
 
-    last = user_cooldowns.get(user_id)
+    last = cooldowns.get(user_id)
 
-    if last and now - last < 3:
+    if last and now - last < delay:
         return False
 
-    user_cooldowns[user_id] = now
-
+    cooldowns[user_id] = now
     return True
