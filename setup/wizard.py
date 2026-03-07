@@ -5,6 +5,16 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 router = Router()
 
+@router.message(Command("settings"))
+async def open_settings(message: Message):
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="⚙️ Настройки", callback_data="settings")]
+        ]
+    )
+
+
 @router.callback_query(F.data == "set_levels")
 async def ask_levels(call: CallbackQuery):
 
@@ -28,15 +38,6 @@ async def set_levels_value(message: Message):
 
     except:
         pass
-
-@router.message(Command("settings"))
-async def open_settings(message: Message):
-
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="⚙️ Настройки", callback_data="settings")]
-        ]
-    )
 
     await message.answer("Меню настроек", reply_markup=kb)
 
