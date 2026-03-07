@@ -1,14 +1,11 @@
 from config import *
 
-def calc_xp_text(length):
+def text_xp(text):
 
-    if 3 <= length <= 20:
-        return 1
+    length = len(text)
 
-    if 21 <= length <= 50:
-        return 3
-
-    if length >= 51:
-        return 5
+    for min_l, max_l, xp in XP_TEXT:
+        if min_l <= length <= max_l:
+            return xp
 
     return 0
