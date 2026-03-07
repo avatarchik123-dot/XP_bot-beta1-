@@ -18,7 +18,7 @@ async def help_cmd(message: Message):
         "/initgroup — инициализация группы\n"
     )
 
-    await message.answer(text)
+    await send_temp(message,text)
 
 @router.message(Command("initgroup"))
 async def init_group(message: Message):
@@ -26,7 +26,7 @@ async def init_group(message: Message):
     chat_id = message.chat.id
 
     if groups.search(Group.chat_id == chat_id):
-        await message.answer("Группа уже настроена")
+        await send_temp(message,"Группа уже настроена")
         return
 
     groups.insert({
@@ -35,4 +35,4 @@ async def init_group(message: Message):
         "max_level": DEFAULT_MAX_LEVEL
     })
 
-    await message.answer("Группа инициализирована")
+    await send_temp(message,"Группа инициализирована")
