@@ -5,6 +5,8 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 router = Router()
 
+@router.message(Command("settings"), F.chat.type == "private")
+
 @router.message(Command("settings"))
 async def open_settings(message: Message):
 
