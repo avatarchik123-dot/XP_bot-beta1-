@@ -1,13 +1,14 @@
 from aiogram import Router
 from aiogram.types import MessageReactionUpdated
 
-from config import XP_REACTION, MAX_REACTIONS
+from config import XP_REACTION
 from services.database import reactions, users, Reaction, User
 
 router = Router()
 
+
 @router.message_reaction()
-async def reaction_handler(event: MessageReactionUpdated):
+async def reaction_handler(event: MessageReactionUpdated, bot):
 
     reactor = event.user.id
     message_id = event.message_id
@@ -22,12 +23,12 @@ async def reaction_handler(event: MessageReactionUpdated):
         "key": key
     })
 
-    message_author = event.actor_chat
+    message = await bot.get_message(chat_id, message_id)
 
-    if not message_author:
+    if not message.from_user:
         return
 
-    author_id = message_author.id
+    author_id = message.from_user.id
 
     user = users.get((User.user_id == author_id) & (User.chat_id == chat_id))
 
