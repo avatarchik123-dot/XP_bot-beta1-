@@ -1,15 +1,15 @@
 from aiogram import Router
 from aiogram.types import Message
 
-from engines.xp import calc_xp_text
-from services.cache_manager import check_antiflood
-from services.file_manager import db
+from config import *
+from engines.xp import text_xp
+from services.database import users, groups, User, Group
+from services.cache_manager import antiflood
 
 router = Router()
 
-
 @router.message()
-async def level_system(message: Message):
+async def handle_message(message: Message):
 
     if message.chat.type == "private":
         return
@@ -17,51 +17,74 @@ async def level_system(message: Message):
     user_id = message.from_user.id
     chat_id = message.chat.id
 
-    if not check_antiflood(user_id):
+    if not antiflood(user_id, ANTIFLOOD):
         return
 
-    text = message.text or ""
+    xp = 0
 
-    xp = calc_xp_text(len(text))
+    if message.text:
+        xp += text_xp(message.text)
 
-    async with await db() as conn:
+    if message.photo:
+        xp += XP_PHOTO
 
-        cur = await conn.execute(
-        "SELECT xp,level FROM users WHERE user_id=? AND chat_id=?",
-        (user_id,chat_id)
-        )
+    if message.sticker:
+        xp += XP_STICKER
 
-        user = await cur.fetchone()
+    if message.video:
+        xp += XP_VIDEO
 
-        if not user:
+    if message.audio:
+        xp += XP_AUDIO
 
-            await conn.execute(
-            "INSERT INTO users(user_id,chat_id,xp,level) VALUES(?,?,?,?)",
-            (user_id,chat_id,xp,1)
-            )
+    if xp == 0:
+        return
 
-        else:
+    user = users.get((User.user_id == user_id) & (User.chat_id == chat_id))
 
-            xp_total = user[0] + xp
+    if not user:
 
-            level = user[1]
+        users.insert({
+            "user_id": user_id,
+            "chat_id": chat_id,
+            "xp": xp,
+            "level": 1
+        })
 
-            cur = await conn.execute(
-            "SELECT xp_step FROM groups WHERE chat_id=?",
-            (chat_id,)
-            )
+        return
 
-            xp_step = (await cur.fetchone())[0]
+    xp_total = user["xp"] + xp
+    level = user["level"]
 
-            if xp_total >= level * xp_step:
+    group = groups.get(Group.chat_id == chat_id)
 
-                level += 1
+    if not group:
+        return
 
-                await message.answer(f"Новый уровень {level}")
+    xp_step = group["xp_step"]
 
-            await conn.execute(
-            "UPDATE users SET xp=?,level=? WHERE user_id=? AND chat_id=?",
-            (xp_total,level,user_id,chat_id)
-            )
+    if xp_total >= level * xp_step:
 
-        await conn.commit()
+        level += 1
+
+        msg = await message.answer(f"Новый уровень {level}")
+
+        import asyncio
+        asyncio.create_task(auto_delete(msg))
+
+    users.update(
+        {"xp": xp_total, "level": level},
+        (User.user_id == user_id) & (User.chat_id == chat_id)
+    )
+
+
+async def auto_delete(msg):
+
+    import asyncio
+
+    await asyncio.sleep(AUTO_DELETE)
+
+    try:
+        await msg.delete()
+    except:
+        pass
