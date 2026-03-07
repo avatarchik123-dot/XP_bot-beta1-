@@ -3,7 +3,7 @@ from config import *
 @router.message()
 async def handle_message(message: Message):
 
-def text_xp(text):
+    def text_xp(text):
 
     length = len(text)
 
