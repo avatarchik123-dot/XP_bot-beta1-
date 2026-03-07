@@ -2,6 +2,8 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from services.level_settings import set_level_count
 
+router = Router()
+
 @router.callback_query(F.data == "set_levels")
 async def ask_levels(call: CallbackQuery):
 
