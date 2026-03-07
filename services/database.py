@@ -9,6 +9,7 @@ db = TinyDB(f"{DATA_PATH}/database.json")
 users = db.table("users")
 groups = db.table("groups")
 reactions = db.table("reactions")
+level_settings = db.table("level_settings")
 
 User = Query()
 Group = Query()
