@@ -20,7 +20,7 @@ async def main():
     dp.include_router(reaction_router)
     dp.include_router(wizard_router)
 
-    print("Bot started")
+    print("It's alive")
 
     await dp.start_polling(bot)
 
