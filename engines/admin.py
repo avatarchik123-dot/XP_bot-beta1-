@@ -7,6 +7,18 @@ from config import DEFAULT_XP_STEP, DEFAULT_MAX_LEVEL
 
 router = Router()
 
+@router.message(Command("help"))
+async def help_cmd(message: Message):
+
+    text = (
+        "Команды бота:\n\n"
+        "/rank — твой уровень\n"
+        "/top — топ участников\n"
+        "/initgroup — инициализация группы\n"
+    )
+
+    await message.answer(text)
+
 @router.message(Command("initgroup"))
 async def init_group(message: Message):
 
