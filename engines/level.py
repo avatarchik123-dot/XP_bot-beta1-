@@ -19,7 +19,7 @@ async def rank(message: Message):
     user = users.get((User.user_id == user_id) & (User.chat_id == chat_id))
 
     if not user:
-        await message.answer("У тебя пока нет XP")
+        await send_temp(message,"У тебя пока нет XP")
         return
 
     xp = user["xp"]
@@ -106,7 +106,7 @@ async def handle_message(message: Message):
 
         level += 1
 
-        msg = await message.answer(f"Новый уровень {level}")
+        msg = await send_temp(message,f"Новый уровень {level}")
 
         import asyncio
         asyncio.create_task(auto_delete(msg))
