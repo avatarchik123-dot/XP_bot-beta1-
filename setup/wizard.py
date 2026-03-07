@@ -5,6 +5,10 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 router = Router()
 
+@router.message()
+async def test(message: Message):
+    print("wizard router жив")
+
 @router.message(Command("settings"), F.chat.type == "private")
 
 @router.message(Command("settings"))
