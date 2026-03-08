@@ -38,6 +38,7 @@ def add_group(chat_id, title):
             "title": title
         })
 
+def get_groups():
     return groups.all()
 
 
