@@ -24,15 +24,19 @@ Level = Query()
 
 def add_group(chat_id, title):
 
-    if not groups.contains(Group.chat_id == chat_id):
+    if groups.contains(Group.chat_id == chat_id):
+
+        groups.update(
+            {"title": title},
+            Group.chat_id == chat_id
+        )
+
+    else:
 
         groups.insert({
             "chat_id": chat_id,
             "title": title
         })
-
-
-def get_groups():
 
     return groups.all()
 
