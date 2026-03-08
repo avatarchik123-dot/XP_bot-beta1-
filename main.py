@@ -15,10 +15,10 @@ async def main():
 
     dp = Dispatcher()
 
+    dp.include_router(wizard_router)
     dp.include_router(admin_router)
     dp.include_router(level_router)
     dp.include_router(reaction_router)
-    dp.include_router(wizard_router)
 
     print("It's alive")
 
