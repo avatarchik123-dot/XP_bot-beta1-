@@ -3,60 +3,19 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-import sqlite3
+
+from services.database import (
+    add_group,
+    get_groups,
+    set_levels,
+    set_distance,
+    set_level_names,
+    get_settings,
+    get_level_names,
+    set_level_pic
+)
 
 router = Router()
-
-DATA_PATH = "data/bot.db"
-
-
-# ---------------- БАЗА ----------------
-
-def get_db():
-    return sqlite3.connect(DATA_PATH)
-
-
-def init_db():
-
-    db = get_db()
-    cur = db.cursor()
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS known_groups(
-        chat_id INTEGER PRIMARY KEY,
-        title TEXT
-    )
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS level_settings(
-        chat_id INTEGER PRIMARY KEY,
-        levels INTEGER,
-        distance INTEGER
-    )
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS level_names(
-        chat_id INTEGER,
-        level INTEGER,
-        name TEXT
-    )
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS level_pics(
-        chat_id INTEGER,
-        level INTEGER,
-        file_id TEXT
-    )
-    """)
-
-    db.commit()
-    db.close()
-
-
-init_db()
 
 
 # ---------------- FSM ----------------
@@ -79,23 +38,16 @@ class SetupStates(StatesGroup):
 
 def groups_keyboard():
 
-    db = get_db()
-    cur = db.cursor()
-
-    cur.execute("SELECT chat_id,title FROM known_groups")
-
     buttons = []
 
-    for gid,title in cur.fetchall():
+    for g in get_groups():
 
         buttons.append([
             InlineKeyboardButton(
-                text=title,
-                callback_data=f"group_{gid}"
+                text=g["title"],
+                callback_data=f"group_{g['chat_id']}"
             )
         ])
-
-    db.close()
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -104,10 +56,10 @@ def menu_keyboard():
 
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📊 Количество уровней",callback_data="set_levels")],
-            [InlineKeyboardButton(text="📏 Дистанция XP",callback_data="set_distance")],
-            [InlineKeyboardButton(text="🏷 Названия уровней",callback_data="set_names")],
-            [InlineKeyboardButton(text="📋 Текущие параметры",callback_data="current")]
+            [InlineKeyboardButton(text="📊 Количество уровней", callback_data="levels")],
+            [InlineKeyboardButton(text="📏 Дистанция XP", callback_data="distance")],
+            [InlineKeyboardButton(text="🏷 Названия уровней", callback_data="names")],
+            [InlineKeyboardButton(text="📋 Текущие параметры", callback_data="current")]
         ]
     )
 
@@ -116,8 +68,8 @@ def confirm_keyboard():
 
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Подтвердить",callback_data="confirm")],
-            [InlineKeyboardButton(text="❌ Отмена",callback_data="cancel")]
+            [InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm")],
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel")]
         ]
     )
 
@@ -129,19 +81,10 @@ async def bot_added(event):
 
     chat = event.chat
 
-    if chat.type not in ["group","supergroup"]:
+    if chat.type not in ["group", "supergroup"]:
         return
 
-    db = get_db()
-    cur = db.cursor()
-
-    cur.execute(
-        "INSERT OR IGNORE INTO known_groups(chat_id,title) VALUES (?,?)",
-        (chat.id,chat.title)
-    )
-
-    db.commit()
-    db.close()
+    add_group(chat.id, chat.title)
 
 
 # ---------------- SETTINGS ----------------
@@ -158,7 +101,7 @@ async def settings(message: Message):
 # ---------------- ВЫБОР ГРУППЫ ----------------
 
 @router.callback_query(F.data.startswith("group_"))
-async def choose_group(call: CallbackQuery,state:FSMContext):
+async def choose_group(call: CallbackQuery, state: FSMContext):
 
     gid = int(call.data.split("_")[1])
 
@@ -170,10 +113,10 @@ async def choose_group(call: CallbackQuery,state:FSMContext):
     )
 
 
-# ---------------- УРОВНИ ----------------
+# ---------------- КОЛИЧЕСТВО УРОВНЕЙ ----------------
 
-@router.callback_query(F.data=="set_levels")
-async def set_levels(call:CallbackQuery,state:FSMContext):
+@router.callback_query(F.data == "levels")
+async def levels(call: CallbackQuery, state: FSMContext):
 
     await state.set_state(SetupStates.waiting_levels)
 
@@ -183,33 +126,24 @@ async def set_levels(call:CallbackQuery,state:FSMContext):
 
 
 @router.message(SetupStates.waiting_levels)
-async def levels_value(message:Message,state:FSMContext):
+async def levels_value(message: Message, state: FSMContext):
 
-    try:
+    value = int(message.text)
 
-        value=int(message.text)
+    await state.update_data(temp_levels=value)
 
-        if value<5 or value>100:
-            await message.answer("Можно от 5 до 100")
-            return
+    await state.set_state(SetupStates.confirm_levels)
 
-        await state.update_data(temp_levels=value)
-
-        await state.set_state(SetupStates.confirm_levels)
-
-        await message.answer(
-            f"Установить {value} уровней?",
-            reply_markup=confirm_keyboard()
-        )
-
-    except:
-        await message.answer("Введите число")
+    await message.answer(
+        f"Установить {value} уровней?",
+        reply_markup=confirm_keyboard()
+    )
 
 
-# ---------------- ДИСТАНЦИЯ XP ----------------
+# ---------------- ДИСТАНЦИЯ ----------------
 
-@router.callback_query(F.data=="set_distance")
-async def set_distance(call:CallbackQuery,state:FSMContext):
+@router.callback_query(F.data == "distance")
+async def distance(call: CallbackQuery, state: FSMContext):
 
     await state.set_state(SetupStates.waiting_distance)
 
@@ -219,29 +153,24 @@ async def set_distance(call:CallbackQuery,state:FSMContext):
 
 
 @router.message(SetupStates.waiting_distance)
-async def distance_value(message:Message,state:FSMContext):
+async def distance_value(message: Message, state: FSMContext):
 
-    try:
+    value = int(message.text)
 
-        value=int(message.text)
+    await state.update_data(temp_distance=value)
 
-        await state.update_data(temp_distance=value)
+    await state.set_state(SetupStates.confirm_distance)
 
-        await state.set_state(SetupStates.confirm_distance)
-
-        await message.answer(
-            f"Установить дистанцию {value} XP?",
-            reply_markup=confirm_keyboard()
-        )
-
-    except:
-        await message.answer("Введите число")
+    await message.answer(
+        f"Установить дистанцию {value} XP?",
+        reply_markup=confirm_keyboard()
+    )
 
 
 # ---------------- НАЗВАНИЯ ----------------
 
-@router.callback_query(F.data=="set_names")
-async def set_names(call:CallbackQuery,state:FSMContext):
+@router.callback_query(F.data == "names")
+async def names(call: CallbackQuery, state: FSMContext):
 
     await state.set_state(SetupStates.waiting_names)
 
@@ -254,21 +183,18 @@ async def set_names(call:CallbackQuery,state:FSMContext):
 
 
 @router.message(SetupStates.waiting_names)
-async def names_value(message:Message,state:FSMContext):
+async def names_value(message: Message, state: FSMContext):
 
-    names={}
+    names = {}
 
     for line in message.text.split("\n"):
 
         if "." not in line:
             continue
 
-        num,name=line.split(".",1)
+        num, name = line.split(".", 1)
 
-        try:
-            names[int(num.strip())]=name.strip()
-        except:
-            pass
+        names[int(num.strip())] = name.strip()
 
     await state.update_data(temp_names=names)
 
@@ -282,50 +208,21 @@ async def names_value(message:Message,state:FSMContext):
 
 # ---------------- ПОДТВЕРЖДЕНИЕ ----------------
 
-@router.callback_query(F.data=="confirm")
-async def confirm(call:CallbackQuery,state:FSMContext):
+@router.callback_query(F.data == "confirm")
+async def confirm(call: CallbackQuery, state: FSMContext):
 
-    data=await state.get_data()
+    data = await state.get_data()
 
-    group=data["group"]
-
-    db=get_db()
-    cur=db.cursor()
+    group = data["group"]
 
     if "temp_levels" in data:
-
-        cur.execute("""
-        INSERT INTO level_settings(chat_id,levels)
-        VALUES (?,?)
-        ON CONFLICT(chat_id)
-        DO UPDATE SET levels=excluded.levels
-        """,(group,data["temp_levels"]))
+        set_levels(group, data["temp_levels"])
 
     if "temp_distance" in data:
-
-        cur.execute("""
-        INSERT INTO level_settings(chat_id,distance)
-        VALUES (?,?)
-        ON CONFLICT(chat_id)
-        DO UPDATE SET distance=excluded.distance
-        """,(group,data["temp_distance"]))
+        set_distance(group, data["temp_distance"])
 
     if "temp_names" in data:
-
-        cur.execute(
-            "DELETE FROM level_names WHERE chat_id=?",
-            (group,)
-        )
-
-        for lvl,name in data["temp_names"].items():
-
-            cur.execute(
-                "INSERT INTO level_names VALUES (?,?,?)",
-                (group,lvl,name)
-            )
-
-    db.commit()
-    db.close()
+        set_level_names(group, data["temp_names"])
 
     await call.message.answer(
         "Настройки сохранены",
@@ -337,8 +234,8 @@ async def confirm(call:CallbackQuery,state:FSMContext):
 
 # ---------------- ОТМЕНА ----------------
 
-@router.callback_query(F.data=="cancel")
-async def cancel(call:CallbackQuery,state:FSMContext):
+@router.callback_query(F.data == "cancel")
+async def cancel(call: CallbackQuery, state: FSMContext):
 
     await call.message.answer(
         "Изменение отменено",
@@ -350,42 +247,25 @@ async def cancel(call:CallbackQuery,state:FSMContext):
 
 # ---------------- ТЕКУЩИЕ ПАРАМЕТРЫ ----------------
 
-@router.callback_query(F.data=="current")
-async def current(call:CallbackQuery,state:FSMContext):
+@router.callback_query(F.data == "current")
+async def current(call: CallbackQuery, state: FSMContext):
 
-    data=await state.get_data()
+    data = await state.get_data()
 
-    gid=data["group"]
+    gid = data["group"]
 
-    db=get_db()
-    cur=db.cursor()
+    settings = get_settings(gid)
 
-    cur.execute(
-        "SELECT levels,distance FROM level_settings WHERE chat_id=?",
-        (gid,)
-    )
+    names = get_level_names(gid)
 
-    settings=cur.fetchone()
+    text = f"Группа: {gid}\n"
+    text += f"Уровней: {settings.get('levels')}\n"
+    text += f"Дистанция XP: {settings.get('distance')}\n\n"
 
-    cur.execute(
-        "SELECT level,name FROM level_names WHERE chat_id=?",
-        (gid,)
-    )
+    text += "Названия:\n"
 
-    names=cur.fetchall()
-
-    db.close()
-
-    text=f"Группа: {gid}\n"
-
-    if settings:
-        text+=f"Уровней: {settings[0]}\n"
-        text+=f"Дистанция XP: {settings[1]}\n"
-
-    text+="\nНазвания:\n"
-
-    for lvl,name in names:
-        text+=f"{lvl}. {name}\n"
+    for lvl, name in names.items():
+        text += f"{lvl}. {name}\n"
 
     await call.message.answer(text)
 
@@ -393,50 +273,31 @@ async def current(call:CallbackQuery,state:FSMContext):
 # ---------------- SETPIC ----------------
 
 @router.message(Command("setpic"))
-async def setpic(message:Message,state:FSMContext):
+async def setpic(message: Message, state: FSMContext):
 
-    args=message.text.split()
-
-    if len(args)<2:
-        await message.answer("Использование: /setpic номер_уровня")
-        return
-
-    level=int(args[1])
+    level = int(message.text.split()[1])
 
     await state.update_data(pic_level=level)
 
     await state.set_state(SetupStates.waiting_pic)
 
     await message.answer(
-        f"Отправьте картинку или GIF для уровня {level}"
+        f"Отправьте картинку для уровня {level}"
     )
 
 
 @router.message(SetupStates.waiting_pic)
-async def save_pic(message:Message,state:FSMContext):
+async def save_pic(message: Message, state: FSMContext):
 
-    data=await state.get_data()
+    data = await state.get_data()
 
-    level=data["pic_level"]
-    group=data.get("group")
+    level = data["pic_level"]
+    group = data["group"]
 
-    if not message.photo and not message.animation:
-        await message.answer("Нужно фото или gif")
-        return
+    file_id = message.photo[-1].file_id
 
-    file_id = message.photo[-1].file_id if message.photo else message.animation.file_id
+    set_level_pic(group, level, file_id)
 
-    db=get_db()
-    cur=db.cursor()
-
-    cur.execute(
-        "INSERT INTO level_pics VALUES (?,?,?)",
-        (group,level,file_id)
-    )
-
-    db.commit()
-    db.close()
-
-    await message.answer("Картинка уровня сохранена")
+    await message.answer("Картинка сохранена")
 
     await state.clear()
