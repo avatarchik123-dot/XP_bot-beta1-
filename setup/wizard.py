@@ -23,13 +23,10 @@ router = Router()
 class SetupStates(StatesGroup):
 
     waiting_levels = State()
-    confirm_levels = State()
-
     waiting_distance = State()
-    confirm_distance = State()
-
     waiting_names = State()
-    confirm_names = State()
+
+    confirm = State()
 
     waiting_pic = State()
 
@@ -123,18 +120,24 @@ async def levels(call: CallbackQuery, state: FSMContext):
     await state.set_state(SetupStates.waiting_levels)
 
     await call.message.answer(
-        "Укажите количество уровней (5-100)"
+        "Введите количество уровней (5-100)"
     )
 
 
 @router.message(SetupStates.waiting_levels)
 async def levels_value(message: Message, state: FSMContext):
 
+    if not message.text.isdigit():
+        await message.answer("Введите число")
+        return
+
     value = int(message.text)
 
-    await state.update_data(temp_levels=value)
+    if value < 5 or value > 100:
+        await message.answer("Допустимо: 5 - 100")
+        return
 
-    await state.set_state(SetupStates.confirm_levels)
+    await state.update_data(temp_levels=value, action="levels")
 
     await message.answer(
         f"Установить {value} уровней?",
@@ -157,11 +160,13 @@ async def distance(call: CallbackQuery, state: FSMContext):
 @router.message(SetupStates.waiting_distance)
 async def distance_value(message: Message, state: FSMContext):
 
+    if not message.text.isdigit():
+        await message.answer("Введите число")
+        return
+
     value = int(message.text)
 
-    await state.update_data(temp_distance=value)
-
-    await state.set_state(SetupStates.confirm_distance)
+    await state.update_data(temp_distance=value, action="distance")
 
     await message.answer(
         f"Установить дистанцию {value} XP?",
@@ -177,7 +182,7 @@ async def names(call: CallbackQuery, state: FSMContext):
     await state.set_state(SetupStates.waiting_names)
 
     await call.message.answer(
-        "Введите названия:\n\n"
+        "Введите названия уровней:\n\n"
         "1. Новичок\n"
         "2. Актив\n"
         "3. Флудер"
@@ -196,11 +201,18 @@ async def names_value(message: Message, state: FSMContext):
 
         num, name = line.split(".", 1)
 
-        names[int(num.strip())] = name.strip()
+        try:
+            lvl = int(num.strip())
+        except:
+            continue
 
-    await state.update_data(temp_names=names)
+        names[lvl] = name.strip()
 
-    await state.set_state(SetupStates.confirm_names)
+    if not names:
+        await message.answer("Не удалось распознать формат")
+        return
+
+    await state.update_data(temp_names=names, action="names")
 
     await message.answer(
         "Сохранить названия?",
@@ -215,19 +227,20 @@ async def confirm(call: CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
 
-    group = data["group"]
+    group = data.get("group")
+    action = data.get("action")
 
-    if "temp_levels" in data:
+    if action == "levels":
         set_levels(group, data["temp_levels"])
 
-    if "temp_distance" in data:
+    if action == "distance":
         set_distance(group, data["temp_distance"])
 
-    if "temp_names" in data:
+    if action == "names":
         set_level_names(group, data["temp_names"])
 
     await call.message.answer(
-        "Настройки сохранены",
+        "✅ Настройки сохранены",
         reply_markup=menu_keyboard()
     )
 
@@ -240,7 +253,7 @@ async def confirm(call: CallbackQuery, state: FSMContext):
 async def cancel(call: CallbackQuery, state: FSMContext):
 
     await call.message.answer(
-        "Изменение отменено",
+        "❌ Изменение отменено",
         reply_markup=menu_keyboard()
     )
 
@@ -254,17 +267,16 @@ async def current(call: CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
 
-    gid = data["group"]
+    gid = data.get("group")
 
     settings = get_settings(gid)
-
     names = get_level_names(gid)
 
     text = f"Группа: {gid}\n"
     text += f"Уровней: {settings.get('levels')}\n"
     text += f"Дистанция XP: {settings.get('distance')}\n\n"
 
-    text += "Названия:\n"
+    text += "Названия уровней:\n"
 
     for lvl, name in names.items():
         text += f"{lvl}. {name}\n"
@@ -277,7 +289,17 @@ async def current(call: CallbackQuery, state: FSMContext):
 @router.message(Command("setpic"))
 async def setpic(message: Message, state: FSMContext):
 
-    level = int(message.text.split()[1])
+    args = message.text.split()
+
+    if len(args) < 2:
+        await message.answer("Использование: /setpic 3")
+        return
+
+    if not args[1].isdigit():
+        await message.answer("Уровень должен быть числом")
+        return
+
+    level = int(args[1])
 
     await state.update_data(pic_level=level)
 
@@ -291,6 +313,10 @@ async def setpic(message: Message, state: FSMContext):
 @router.message(SetupStates.waiting_pic)
 async def save_pic(message: Message, state: FSMContext):
 
+    if not message.photo:
+        await message.answer("Отправьте изображение")
+        return
+
     data = await state.get_data()
 
     level = data["pic_level"]
@@ -300,6 +326,6 @@ async def save_pic(message: Message, state: FSMContext):
 
     set_level_pic(group, level, file_id)
 
-    await message.answer("Картинка сохранена")
+    await message.answer("✅ Картинка сохранена")
 
     await state.clear()
