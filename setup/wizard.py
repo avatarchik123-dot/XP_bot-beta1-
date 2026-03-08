@@ -44,7 +44,7 @@ def groups_keyboard():
 
         buttons.append([
             InlineKeyboardButton(
-                text=g["title"],
+                text=g.get("title", str(g["chat_id"]))
                 callback_data=f"group_{g['chat_id']}"
             )
         ])
