@@ -38,6 +38,7 @@ def add_group(chat_id, title):
             "title": title
         })
 
+
 def get_groups():
     return groups.all()
 
@@ -139,3 +140,71 @@ def get_level_pic(chat_id, level):
         return data["file_id"]
 
     return None
+
+
+# ---------------- XP ПОЛЬЗОВАТЕЛЕЙ ----------------
+
+def get_user(chat_id, user_id):
+
+    user = users.get(
+        (User.chat_id == chat_id) &
+        (User.user_id == user_id)
+    )
+
+    if not user:
+
+        user = {
+            "chat_id": chat_id,
+            "user_id": user_id,
+            "xp": 0
+        }
+
+        users.insert(user)
+
+    return user
+
+
+def add_xp(chat_id, user_id, xp):
+
+    user = get_user(chat_id, user_id)
+
+    new_xp = user["xp"] + xp
+
+    users.update(
+        {"xp": new_xp},
+        (User.chat_id == chat_id) &
+        (User.user_id == user_id)
+    )
+
+    return new_xp
+
+
+def remove_xp(chat_id, user_id, xp):
+
+    user = get_user(chat_id, user_id)
+
+    new_xp = max(0, user["xp"] - xp)
+
+    users.update(
+        {"xp": new_xp},
+        (User.chat_id == chat_id) &
+        (User.user_id == user_id)
+    )
+
+    return new_xp
+
+
+def get_user_xp(chat_id, user_id):
+
+    user = get_user(chat_id, user_id)
+
+    return user["xp"]
+
+
+def get_top_users(chat_id, limit=10):
+
+    data = users.search(User.chat_id == chat_id)
+
+    data.sort(key=lambda x: x["xp"], reverse=True)
+
+    return data[:limit]
