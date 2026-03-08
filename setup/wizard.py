@@ -7,13 +7,13 @@ import sqlite3
 
 router = Router()
 
-DB_PATH = "data/bot.db"
+DATA_PATH = "data/bot.db"
 
 
 # ---------------- БАЗА ----------------
 
 def get_db():
-    return sqlite3.connect(DB_PATH)
+    return sqlite3.connect(DATA_PATH)
 
 
 def init_db():
