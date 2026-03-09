@@ -147,22 +147,22 @@ def get_level_pic(chat_id, level):
 def get_user(chat_id, user_id):
 
     user = users.get(
-        (User.chat_id == chat_id) &
-        (User.user_id == user_id)
-    )
+    (User.chat_id == chat_id) &
+    (User.user_id == user_id)
+)
 
-    if not user:
+if not user:
 
-        user = {
-            "chat_id": chat_id,
-            "user_id": user_id,
-            "xp": 0
-            "level": 0
-        }
+    user = {
+        "chat_id": chat_id,
+        "user_id": user_id,
+        "xp": 0,
+        "level": 0
+    }
 
-        users.insert(user)
+    users.insert(user)
 
-    return user
+return user
 
 
 def add_xp(chat_id, user_id, xp):
