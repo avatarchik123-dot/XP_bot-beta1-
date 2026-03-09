@@ -107,13 +107,13 @@ async def handle_message(message: Message):
 
     new_level = xp_total // xp_step + 1
 
-    if new_level > old_level:
-        await send_temp(message, f"Новый уровень {new_level}")
-
     users.update(
-        {"xp": xp_total, "level": new_level},
-        (User.user_id == user_id) & (User.chat_id == chat_id)
-    )
+    {"xp": xp_total, "level": new_level},
+    (User.user_id == user_id) & (User.chat_id == chat_id)
+)
+
+    if new_level > old_level:
+    await send_temp(message, f"Новый уровень {new_level}")
 
 
 async def auto_delete(msg):
