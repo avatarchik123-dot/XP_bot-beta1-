@@ -101,7 +101,7 @@ async def handle_message(message: Message):
     if not group:
         return
 
-    xp_step = group["xp_step"]
+    xp_step = group.get("distance", DEFAULT_XP_STEP)
 
     new_level = xp_total // xp_step + 1
 
