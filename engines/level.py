@@ -10,6 +10,7 @@ from services.utils import send_temp
 
 router = Router()
 
+
 @router.message(Command("rank"))
 async def rank(message: Message):
 
@@ -19,13 +20,14 @@ async def rank(message: Message):
     user = users.get((User.user_id == user_id) & (User.chat_id == chat_id))
 
     if not user:
-        await send_temp(message,"У тебя пока нет XP")
+        await send_temp(message, "У тебя пока нет XP")
         return
 
     xp = user["xp"]
     level = user["level"]
 
-    await send_temp(message,f"Твой уровень: {level}\nXP: {xp}")
+    await send_temp(message, f"Твой уровень: {level}\nXP: {xp}")
+
 
 @router.message(Command("top"))
 async def top_users(message: Message):
@@ -35,7 +37,7 @@ async def top_users(message: Message):
     all_users = users.search(User.chat_id == chat_id)
 
     if not all_users:
-        await send_temp(message,"Пока нет данных")
+        await send_temp(message, "Пока нет данных")
         return
 
     sorted_users = sorted(all_users, key=lambda x: x["xp"], reverse=True)[:5]
@@ -45,7 +47,8 @@ async def top_users(message: Message):
     for i, u in enumerate(sorted_users, 1):
         text += f"{i}. {u['user_id']} — {u['xp']} XP\n"
 
-    await send_temp(message,text)
+    await send_temp(message, text)
+
 
 @router.message()
 async def handle_message(message: Message):
@@ -92,35 +95,22 @@ async def handle_message(message: Message):
 
         return
 
-xp_total = user["xp"] + xp
-old_level = user["level"]
+    xp_total = user["xp"] + xp
+    old_level = user["level"]
 
-group = groups.get(Group.chat_id == chat_id)
+    group = groups.get(Group.chat_id == chat_id)
 
-if not group:
-    return
+    if not group:
+        return
 
-xp_step = group["xp_step"]
+    xp_step = group["xp_step"]
 
-new_level = xp_total // xp_step
+    new_level = xp_total // xp_step
 
-if new_level > old_level:
+    if new_level > old_level:
+        await send_temp(message, f"Новый уровень {new_level}")
 
-    await send_temp(message, f"Новый уровень {new_level}")
-
-users.update(
-    {"xp": xp_total, "level": new_level},
-    (User.user_id == user_id) & (User.chat_id == chat_id)
-)
-
-
-async def auto_delete(msg):
-
-    import asyncio
-
-    await asyncio.sleep(AUTO_DELETE)
-
-    try:
-        await msg.delete()
-    except:
-        pass
+    users.update(
+        {"xp": xp_total, "level": new_level},
+        (User.user_id == user_id) & (User.chat_id == chat_id)
+    )
