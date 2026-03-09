@@ -96,21 +96,21 @@ async def handle_message(message: Message):
         return
 
     xp_total = user["xp"] + xp
-    old_level = user["level"]
+old_level = user["level"]
 
-    group = groups.get(Group.chat_id == chat_id)
+group = groups.get(Group.chat_id == chat_id)
 
-    if not group:
-        return
+if not group:
+    return
 
-    xp_step = group["xp_step"]
+xp_step = group["xp_step"]
 
-    new_level = xp_total // xp_step
+new_level = xp_total // xp_step + 1
 
-    if new_level > old_level:
-        await send_temp(message, f"Новый уровень {new_level}")
+if new_level > old_level:
+    await send_temp(message, f"Новый уровень {new_level}")
 
-    users.update(
-        {"xp": xp_total, "level": new_level},
-        (User.user_id == user_id) & (User.chat_id == chat_id)
-    )
+users.update(
+    {"xp": xp_total, "level": new_level},
+    (User.user_id == user_id) & (User.chat_id == chat_id)
+)
