@@ -162,7 +162,7 @@ if not user:
 
     users.insert(user)
 
-return user
+    return user
 
 
 def add_xp(chat_id, user_id, xp):
