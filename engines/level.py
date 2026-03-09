@@ -1,128 +1,135 @@
 from aiogram import Router
 from aiogram.types import Message
-from aiogram.filters import Command
+from tinydb import Query
 
-from config import *
-from engines.xp import text_xp
-from services.database import users, groups, User, Group
-from services.cache_manager import antiflood
-from services.utils import send_temp
+from services.database import db, get_level_names
+from config import DEFAULT_XP_STEP, DEFAULT_MAX_LEVEL
 
 router = Router()
 
+users = db.table("users")
+groups = db.table("groups")
 
-@router.message(Command("rank"))
-async def rank(message: Message):
-
-    user_id = message.from_user.id
-    chat_id = message.chat.id
-
-    user = users.get((User.user_id == user_id) & (User.chat_id == chat_id))
-
-    if not user:
-        await send_temp(message, "У тебя пока нет XP")
-        return
-
-    xp = user["xp"]
-    level = user["level"]
-
-    await send_temp(message, f"Твой уровень: {level}\nXP: {xp}")
+User = Query()
+Group = Query()
 
 
-@router.message(Command("top"))
-async def top_users(message: Message):
+# антифлуд
+last_message_time = {}
 
-    chat_id = message.chat.id
-
-    all_users = users.search(User.chat_id == chat_id)
-
-    if not all_users:
-        await send_temp(message, "Пока нет данных")
-        return
-
-    sorted_users = sorted(all_users, key=lambda x: x["xp"], reverse=True)[:5]
-
-    text = "🏆 ТОП участников:\n\n"
-
-    for i, u in enumerate(sorted_users, 1):
-        text += f"{i}. {u['user_id']} — {u['xp']} XP\n"
-
-    await send_temp(message, text)
+XP_PER_MESSAGE = 5
+ANTI_FLOOD = 3
 
 
-@router.message()
-async def handle_message(message: Message):
+async def send_temp(message: Message, text: str):
 
-    if message.chat.type == "private":
-        return
-
-    user_id = message.from_user.id
-    chat_id = message.chat.id
-
-    if not antiflood(user_id, ANTIFLOOD):
-        return
-
-    xp = 0
-
-    if message.text:
-        xp += text_xp(message.text)
-
-    if message.photo:
-        xp += XP_PHOTO
-
-    if message.sticker:
-        xp += XP_STICKER
-
-    if message.video:
-        xp += XP_VIDEO
-
-    if message.audio:
-        xp += XP_AUDIO
-
-    if xp == 0:
-        return
-
-    user = users.get((User.user_id == user_id) & (User.chat_id == chat_id))
-
-    if not user:
-        users.insert({
-            "user_id": user_id,
-            "chat_id": chat_id,
-            "xp": xp,
-            "level": 1
-        })
-        return
-
-    xp_total = user["xp"] + xp
-    old_level = user["level"]
-
-    group = groups.get(Group.chat_id == chat_id)
-
-    if not group:
-        return
-
-    xp_step = group.get("distance", DEFAULT_XP_STEP)
-
-    new_level = xp_total // xp_step + 1
-
-    # СНАЧАЛА обновляем базу
-    users.update(
-        {"xp": xp_total, "level": new_level},
-        (User.user_id == user_id) & (User.chat_id == chat_id)
-    )
-
-    # ПОТОМ отправляем сообщение
-    if new_level > old_level:
-        await send_temp(message, f"Новый уровень {new_level}")
-
-
-async def auto_delete(msg):
-
-    import asyncio
-
-    await asyncio.sleep(AUTO_DELETE)
+    msg = await message.answer(text)
 
     try:
         await msg.delete()
     except:
         pass
+
+
+@router.message()
+async def handle_message(message: Message):
+
+    if message.chat.type not in ["group", "supergroup"]:
+        return
+
+    user_id = message.from_user.id
+    chat_id = message.chat.id
+
+    # ---------------- антифлуд ----------------
+
+    import time
+
+    now = time.time()
+
+    key = f"{chat_id}_{user_id}"
+
+    if key in last_message_time:
+
+        if now - last_message_time[key] < ANTI_FLOOD:
+            return
+
+    last_message_time[key] = now
+
+    # ---------------- пользователь ----------------
+
+    user = users.get(
+        (User.user_id == user_id) &
+        (User.chat_id == chat_id)
+    )
+
+    if not user:
+
+        users.insert({
+            "user_id": user_id,
+            "chat_id": chat_id,
+            "xp": 0,
+            "level": 1
+        })
+
+        user = users.get(
+            (User.user_id == user_id) &
+            (User.chat_id == chat_id)
+        )
+
+    # ---------------- настройки группы ----------------
+
+    group = groups.get(Group.chat_id == chat_id)
+
+    xp_step = DEFAULT_XP_STEP
+    max_level = DEFAULT_MAX_LEVEL
+
+    if group:
+
+        if "distance" in group and group["distance"]:
+            xp_step = group["distance"]
+
+        if "levels" in group and group["levels"]:
+            max_level = group["levels"]
+
+    # ---------------- названия уровней ----------------
+
+    level_names = get_level_names(chat_id)
+
+    if not level_names:
+        level_names = {}
+
+    # ---------------- XP ----------------
+
+    xp_gain = XP_PER_MESSAGE
+
+    xp_total = user["xp"] + xp_gain
+    old_level = user["level"]
+
+    new_level = xp_total // xp_step + 1
+
+    if new_level > max_level:
+        new_level = max_level
+
+    # ---------------- обновление базы ----------------
+
+    users.update(
+        {
+            "xp": xp_total,
+            "level": new_level
+        },
+        (User.user_id == user_id) &
+        (User.chat_id == chat_id)
+    )
+
+    # ---------------- повышение уровня ----------------
+
+    if new_level > old_level:
+
+        level_name = level_names.get(new_level)
+
+        if level_name:
+            text = f"🎉 Новый уровень {new_level} — {level_name}"
+        else:
+            text = f"🎉 Новый уровень {new_level}"
+
+        await send_temp(message, text)
