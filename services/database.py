@@ -209,3 +209,33 @@ def get_top_users(chat_id, limit=10):
     data.sort(key=lambda x: x["xp"], reverse=True)
 
     return data[:limit]
+
+def change_xp(chat_id, user_id, amount):
+
+    user = get_user(chat_id, user_id)
+
+    settings = get_settings(chat_id)
+
+    distance = settings.get("distance", 100)
+
+    old_xp = user["xp"]
+    old_level = user.get("level", 0)
+
+    new_xp = max(0, old_xp + amount)
+
+    new_level = new_xp // distance
+
+    users.update(
+        {
+            "xp": new_xp,
+            "level": new_level
+        },
+        (User.chat_id == chat_id) &
+        (User.user_id == user_id)
+    )
+
+    return {
+        "xp": new_xp,
+        "old_level": old_level,
+        "new_level": new_level
+    }
