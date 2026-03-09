@@ -157,6 +157,7 @@ def get_user(chat_id, user_id):
             "chat_id": chat_id,
             "user_id": user_id,
             "xp": 0
+            "level": 0
         }
 
         users.insert(user)
