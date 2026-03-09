@@ -55,3 +55,7 @@ def set_level_image(chat_id, level, file_id):
         {"level_images": images},
         level_settings.chat_id == chat_id
     )
+
+def calculate_level(xp, distance):
+
+    return xp // distance
