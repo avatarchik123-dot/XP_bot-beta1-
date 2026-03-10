@@ -115,3 +115,27 @@ async def receive_picture(message: Message):
     del waiting_picture[user_id]
 
     await message.answer("✅ Изменения успешно сохранены")
+
+async def send_level_picture(message: Message, level: int, text: str):
+
+    chat_id = message.chat.id
+
+    file_id = get_level_pic(chat_id, level)
+
+    if not file_id:
+        await message.answer(text)
+        return
+
+    try:
+
+        await message.answer_animation(
+            file_id,
+            caption=text
+        )
+
+    except:
+
+        await message.answer_photo(
+            file_id,
+            caption=text
+        )
