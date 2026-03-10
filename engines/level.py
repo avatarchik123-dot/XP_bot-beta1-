@@ -167,7 +167,7 @@ async def handle_message(message: Message):
         (User.user_id == user_id) & (User.chat_id == chat_id)
     )
 
-    # ---------- сообщение о новом уровне ----------
+# ---------- сообщение о новом уровне ----------
 
     if new_level > old_level:
 
@@ -189,7 +189,7 @@ async def handle_message(message: Message):
                 f'с достижением нового уровня "{new_level}"'
             )
 
-        await send_temp(message, text)
+        await send_level_picture(message, new_level, text)
 
 
 async def auto_delete(msg):
