@@ -18,8 +18,8 @@ async def main():
 
     dp.include_router(wizard_router)
     dp.include_router(admin_router)
-    dp.include_router(level_router)
     dp.include_router(pic_router)
+    dp.include_router(level_router)
     dp.include_router(reaction_router)
     
 
