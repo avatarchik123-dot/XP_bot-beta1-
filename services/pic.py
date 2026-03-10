@@ -12,7 +12,7 @@ waiting_picture = {}
 
 # ---------- команда ----------
 
-@router.message(Command("setlevelpic"))
+@router.message(Command("setpic"))
 async def set_level_pic_start(message: Message):
 
     if message.chat.type != "private":
