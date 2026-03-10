@@ -92,7 +92,10 @@ async def choose_group(call: CallbackQuery):
     await call.answer()
 
 
-@router.message()
+@router.message(
+    F.chat.type == "private",
+    F.photo | F.animation | F.document
+)
 async def receive_picture(message: Message):
 
     user_id = message.from_user.id
