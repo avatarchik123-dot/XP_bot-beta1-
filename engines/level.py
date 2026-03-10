@@ -1,88 +1,110 @@
 from aiogram import Router
 from aiogram.types import Message
-from tinydb import Query
+from aiogram.filters import Command
 
-from services.database import db, get_level_names
-from config import DEFAULT_XP_STEP, DEFAULT_MAX_LEVEL
+from config import *
+from engines.xp import text_xp
+from services.database import users, groups, User, Group
+from services.cache_manager import antiflood
+from services.utils import send_temp
 
 router = Router()
 
-users = db.table("users")
-groups = db.table("groups")
 
-User = Query()
-Group = Query()
+@router.message(Command("rank"))
+async def rank(message: Message):
+
+    user_id = message.from_user.id
+    chat_id = message.chat.id
+
+    user = users.get((User.user_id == user_id) & (User.chat_id == chat_id))
+
+    if not user:
+        await send_temp(message, "У тебя пока нет XP")
+        return
+
+    xp = user["xp"]
+    level = user["level"]
+
+    await send_temp(message, f"Твой уровень: {level}\nXP: {xp}")
 
 
-# антифлуд
-last_message_time = {}
+@router.message(Command("top"))
+async def top_users(message: Message):
 
-XP_PER_MESSAGE = 5
-ANTI_FLOOD = 3
+    chat_id = message.chat.id
 
+    all_users = users.search(User.chat_id == chat_id)
 
-async def send_temp(message: Message, text: str):
+    if not all_users:
+        await send_temp(message, "Пока нет данных")
+        return
 
-    msg = await message.answer(text)
+    sorted_users = sorted(all_users, key=lambda x: x["xp"], reverse=True)[:5]
 
-    try:
-        await msg.delete()
-    except:
-        pass
+    text = "🏆 ТОП участников:\n\n"
+
+    for i, u in enumerate(sorted_users, 1):
+        text += f"{i}. {u['user_id']} — {u['xp']} XP\n"
+
+    await send_temp(message, text)
 
 
 @router.message()
 async def handle_message(message: Message):
 
-    if message.chat.type not in ["group", "supergroup"]:
+    if message.chat.type == "private":
         return
 
     user_id = message.from_user.id
     chat_id = message.chat.id
 
-    # ---------------- антифлуд ----------------
+    if not antiflood(user_id, ANTIFLOOD):
+        return
 
-    import time
+    xp = 0
 
-    now = time.time()
+    if message.text:
+        xp += text_xp(message.text)
 
-    key = f"{chat_id}_{user_id}"
+    if message.photo:
+        xp += XP_PHOTO
 
-    if key in last_message_time:
+    if message.sticker:
+        xp += XP_STICKER
 
-        if now - last_message_time[key] < ANTI_FLOOD:
-            return
+    if message.video:
+        xp += XP_VIDEO
 
-    last_message_time[key] = now
+    if message.audio:
+        xp += XP_AUDIO
 
-    # ---------------- пользователь ----------------
+    if xp == 0:
+        return
 
-    user = users.get(
-        (User.user_id == user_id) &
-        (User.chat_id == chat_id)
-    )
+    user = users.get((User.user_id == user_id) & (User.chat_id == chat_id))
 
     if not user:
-
         users.insert({
             "user_id": user_id,
             "chat_id": chat_id,
-            "xp": 0,
+            "xp": xp,
             "level": 1
         })
+        return
 
-        user = users.get(
-            (User.user_id == user_id) &
-            (User.chat_id == chat_id)
-        )
+    xp_total = user["xp"] + xp
+    old_level = user["level"]
 
-    # ---------------- настройки группы ----------------
-
+    # Читаем настройки группы
     group = groups.get(Group.chat_id == chat_id)
 
+    # Дефолтные значения
     xp_step = DEFAULT_XP_STEP
     max_level = DEFAULT_MAX_LEVEL
+    level_names = {}
 
+    # Если настройки есть — берём их
     if group:
 
         if "distance" in group and group["distance"]:
@@ -91,45 +113,43 @@ async def handle_message(message: Message):
         if "levels" in group and group["levels"]:
             max_level = group["levels"]
 
-    # ---------------- названия уровней ----------------
+        if "names" in group and group["names"]:
+            level_names = group["names"]
 
-    level_names = get_level_names(chat_id)
-
-    if not level_names:
-        level_names = {}
-
-    # ---------------- XP ----------------
-
-    xp_gain = XP_PER_MESSAGE
-
-    xp_total = user["xp"] + xp_gain
-    old_level = user["level"]
-
+    # Рассчитываем уровень
     new_level = xp_total // xp_step + 1
 
+    # Ограничение максимального уровня
     if new_level > max_level:
         new_level = max_level
 
-    # ---------------- обновление базы ----------------
-
+    # Сначала обновляем базу
     users.update(
-        {
-            "xp": xp_total,
-            "level": new_level
-        },
-        (User.user_id == user_id) &
-        (User.chat_id == chat_id)
+        {"xp": xp_total, "level": new_level},
+        (User.user_id == user_id) & (User.chat_id == chat_id)
     )
 
-    # ---------------- повышение уровня ----------------
-
+    # Потом отправляем сообщение
     if new_level > old_level:
 
-        level_name = level_names.get(new_level)
+        level_name = None
+
+        if level_names:
+            level_name = level_names.get(str(new_level)) or level_names.get(new_level)
 
         if level_name:
-            text = f"🎉 Новый уровень {new_level} — {level_name}"
+            await send_temp(message, f"Новый уровень {new_level} — {level_name}")
         else:
-            text = f"🎉 Новый уровень {new_level}"
+            await send_temp(message, f"Новый уровень {new_level}")
 
-        await send_temp(message, text)
+
+async def auto_delete(msg):
+
+    import asyncio
+
+    await asyncio.sleep(AUTO_DELETE)
+
+    try:
+        await msg.delete()
+    except:
+        pass
