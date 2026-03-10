@@ -4,7 +4,12 @@ from aiogram.filters import Command
 
 from config import *
 from engines.xp import text_xp
-from services.database import users, groups, User, Group
+from services.database import (
+    users,
+    User,
+    get_settings,
+    get_level_names
+)
 from services.cache_manager import antiflood
 from services.utils import send_temp
 
@@ -96,46 +101,36 @@ async def handle_message(message: Message):
     xp_total = user["xp"] + xp
     old_level = user["level"]
 
-    # Читаем настройки группы
-    group = groups.get(Group.chat_id == chat_id)
+    # ---------------- ЧТЕНИЕ НАСТРОЕК ----------------
 
-    # Дефолтные значения
-    xp_step = DEFAULT_XP_STEP
-    max_level = DEFAULT_MAX_LEVEL
-    level_names = {}
+    settings = get_settings(chat_id)
 
-    # Если настройки есть — берём их
-    if group:
+    xp_step = settings.get("distance") or DEFAULT_XP_STEP
+    max_level = settings.get("levels") or DEFAULT_MAX_LEVEL
 
-        if "distance" in group and group["distance"]:
-            xp_step = group["distance"]
+    # ---------------- НАЗВАНИЯ УРОВНЕЙ ----------------
 
-        if "levels" in group and group["levels"]:
-            max_level = group["levels"]
+    level_names = get_level_names(chat_id)
 
-        if "names" in group and group["names"]:
-            level_names = group["names"]
+    # ---------------- РАСЧЁТ УРОВНЯ ----------------
 
-    # Рассчитываем уровень
     new_level = xp_total // xp_step + 1
 
-    # Ограничение максимального уровня
     if new_level > max_level:
         new_level = max_level
 
-    # Сначала обновляем базу
+    # ---------------- ОБНОВЛЕНИЕ БАЗЫ ----------------
+
     users.update(
         {"xp": xp_total, "level": new_level},
         (User.user_id == user_id) & (User.chat_id == chat_id)
     )
 
-    # Потом отправляем сообщение
+    # ---------------- СООБЩЕНИЕ О УРОВНЕ ----------------
+
     if new_level > old_level:
 
-        level_name = None
-
-        if level_names:
-            level_name = level_names.get(str(new_level)) or level_names.get(new_level)
+        level_name = level_names.get(new_level)
 
         if level_name:
             await send_temp(message, f"Новый уровень {new_level} — {level_name}")
