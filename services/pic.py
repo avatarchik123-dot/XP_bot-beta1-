@@ -119,7 +119,6 @@ async def receive_picture(message: Message):
 async def send_level_picture(message: Message, level: int, text: str):
 
     chat_id = message.chat.id
-
     file_id = get_level_pic(chat_id, level)
 
     if not file_id:
@@ -127,15 +126,24 @@ async def send_level_picture(message: Message, level: int, text: str):
         return
 
     try:
-
-        await message.answer_animation(
-            file_id,
-            caption=text
-        )
-
-    except:
-
+        # пробуем как фото
         await message.answer_photo(
-            file_id,
+            photo=file_id,
             caption=text
         )
+        return
+    except:
+        pass
+
+    try:
+        # пробуем как гиф
+        await message.answer_animation(
+            animation=file_id,
+            caption=text
+        )
+        return
+    except:
+        pass
+
+    # если всё сломалось
+    await message.answer(text)
