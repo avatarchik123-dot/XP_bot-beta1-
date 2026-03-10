@@ -31,7 +31,22 @@ async def rank(message: Message):
     xp = user["xp"]
     level = user["level"]
 
-    await send_temp(message, f"Твой уровень: {level}\nXP: {xp}")
+    level_names = get_level_names(chat_id)
+    level_name = level_names.get(level)
+
+    if level_name:
+        text = (
+            f'Звание: "{level_name}"\n'
+            f'Твой уровень: {level}\n'
+            f'XP: {xp}'
+        )
+    else:
+        text = (
+            f'Твой уровень: {level}\n'
+            f'XP: {xp}'
+        )
+
+    await send_temp(message, text)
 
 
 @router.message(Command("top"))
@@ -45,12 +60,23 @@ async def top_users(message: Message):
         await send_temp(message, "Пока нет данных")
         return
 
-    sorted_users = sorted(all_users, key=lambda x: x["xp"], reverse=True)[:5]
+    sorted_users = sorted(all_users, key=lambda x: x["xp"], reverse=True)[:10]
 
     text = "🏆 ТОП участников:\n\n"
 
     for i, u in enumerate(sorted_users, 1):
-        text += f"{i}. {u['user_id']} — {u['xp']} XP\n"
+
+        username = u.get("username")
+        first_name = u.get("first_name")
+
+        if username:
+            name = f"@{username}"
+        elif first_name:
+            name = first_name
+        else:
+            name = str(u["user_id"])
+
+        text += f"{i}. {name} — {u['xp']} XP\n"
 
     await send_temp(message, text)
 
@@ -89,53 +115,80 @@ async def handle_message(message: Message):
 
     user = users.get((User.user_id == user_id) & (User.chat_id == chat_id))
 
+    username = message.from_user.username
+    first_name = message.from_user.first_name
+
     if not user:
         users.insert({
             "user_id": user_id,
             "chat_id": chat_id,
             "xp": xp,
-            "level": 1
+            "level": 1,
+            "username": username,
+            "first_name": first_name
         })
         return
+
+    # обновляем имя если изменилось
+    users.update(
+        {
+            "username": username,
+            "first_name": first_name
+        },
+        (User.user_id == user_id) & (User.chat_id == chat_id)
+    )
 
     xp_total = user["xp"] + xp
     old_level = user["level"]
 
-    # ---------------- ЧТЕНИЕ НАСТРОЕК ----------------
+    # ---------- настройки ----------
 
     settings = get_settings(chat_id)
 
     xp_step = settings.get("distance") or DEFAULT_XP_STEP
     max_level = settings.get("levels") or DEFAULT_MAX_LEVEL
 
-    # ---------------- НАЗВАНИЯ УРОВНЕЙ ----------------
+    # ---------- названия уровней ----------
 
     level_names = get_level_names(chat_id)
 
-    # ---------------- РАСЧЁТ УРОВНЯ ----------------
+    # ---------- расчет уровня ----------
 
     new_level = xp_total // xp_step + 1
 
     if new_level > max_level:
         new_level = max_level
 
-    # ---------------- ОБНОВЛЕНИЕ БАЗЫ ----------------
+    # ---------- обновление базы ----------
 
     users.update(
         {"xp": xp_total, "level": new_level},
         (User.user_id == user_id) & (User.chat_id == chat_id)
     )
 
-    # ---------------- СООБЩЕНИЕ О УРОВНЕ ----------------
+    # ---------- сообщение о новом уровне ----------
 
     if new_level > old_level:
 
         level_name = level_names.get(new_level)
 
-        if level_name:
-            await send_temp(message, f"Новый уровень {new_level} — {level_name}")
+        if username:
+            user_tag = f"@{username}"
         else:
-            await send_temp(message, f"Новый уровень {new_level}")
+            user_tag = first_name
+
+        if level_name:
+            text = (
+                f'Поздравляем {user_tag} '
+                f'с достижением нового уровня "{new_level}" - "{level_name}"'
+            )
+        else:
+            text = (
+                f'Поздравляем {user_tag} '
+                f'с достижением нового уровня "{new_level}"'
+            )
+
+        await send_temp(message, text)
 
 
 async def auto_delete(msg):
