@@ -7,6 +7,7 @@ from engines.admin import router as admin_router
 from engines.level import router as level_router
 from engines.reaction import router as reaction_router
 from setup.wizard import router as wizard_router
+from services.pic import router as pic_router
 
 
 async def main():
@@ -19,6 +20,7 @@ async def main():
     dp.include_router(admin_router)
     dp.include_router(level_router)
     dp.include_router(reaction_router)
+    dp.include_router(pic_router)
 
     print("It's alive")
 
